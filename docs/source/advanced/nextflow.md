@@ -139,11 +139,11 @@ process countLines {
 }
 
 workflow {
-    Channel.fromPath(params.input) \
-        | splitFile \
-        | flatten \
-        | countLines \
-        | view
+    Channel.fromPath(params.input) |
+        splitFile |
+        flatten |
+        countLines |
+        view
 }
 ```
 
