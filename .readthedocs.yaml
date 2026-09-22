@@ -11,7 +11,7 @@ build:
     # 3.12 or newer is required: sphinx-autodoc-typehints 3.10.2 declares
     # Requires-Python >=3.12, and pip silently resolves to an ancient 3.6.x
     # on 3.11 or fails outright.
-    python: "3.12"
+    python: "3.13"
   jobs:
     # Read the Docs invokes sphinx-build directly and ignores docs/Makefile,
     # so the `generate-containers` prerequisite of the `html` target never

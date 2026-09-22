@@ -59,7 +59,13 @@ latex_engine = 'xelatex'
 latex_elements = {
     'preamble': r'''
 \usepackage{fontspec}
-\setmonofont{DejaVu Sans Mono}
+\setmonofont{DejaVuSansMono}[
+    Extension      = .ttf,
+    UprightFont    = *,
+    BoldFont       = *-Bold,
+    ItalicFont     = *-Oblique,
+    BoldItalicFont = *-BoldOblique,
+]
 \usepackage{newunicodechar}
 \newunicodechar{🔍}{}
 \newunicodechar{📦}{}
