@@ -10,4 +10,5 @@ openmpi
 workflows
 python
 spack
+benchmarking
 ```
