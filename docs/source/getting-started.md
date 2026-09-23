@@ -4,7 +4,7 @@
 
 ## What is the Lane cluster?
 
-The Lane cluster provides a powerful high-performance computing (HPC) environment for researchers working with computational biology, genomics, machine learning, and data-intensive scientific workflows. This chapter introduces the essential concepts you need before running your first job, including how to access the system, navigate the filesystem, load software with environment modules, and submit workloads with SLURM.
+The Lane cluster provides a high-performance computing (HPC) environment for researchers working with computational biology, genomics, machine learning, and data-intensive scientific workflows. This chapter introduces the essential concepts you need before running your first job, including how to access the system, navigate the filesystem, load software with environment modules, and submit workloads with SLURM.
 
 ## Who can access the cluster?
 
@@ -38,11 +38,11 @@ Your sponsor must authorize your access. Most users begin by:
 * Confirming that Lane is the appropriate resource
 * Asking the PI to approve account creation
 
-Advisors do not need to provide funding or project information depending on internal policies.
-
 ### Submit an Account Request
 
-Once approved by your sponsor, the sponsor or an admin will submit an account request using the Lane Center’s designated process. If you are a sponsor, then please complete this [form](https://computing.cs.cmu.edu/accounts-access/forms/scs-account).
+Once approved by your sponsor, then please complete this [form](https://computing.cs.cmu.edu/accounts-access/forms/scs-account). Requests received by email will not receive the same priority as those submitted using the form.
+
+If you need to request access for a large group or class, then contact your admin to initiate the process.
 
 ### Wait for Account Provisioning
 
