@@ -33,18 +33,92 @@ On the Lane Cluster, Spack is especially useful for:
 
 ## Prerequisites
 
-Spack is written in Python and requires a working **Python interpreter (Python 3.6 or newer)** to run.
+Spack is written in Python and requires a working **Python interpreter (Python 3.6 or newer)** and **Git** to run.
 
-On most HPC systems, including the Lane Cluster, this requirement is typically satisfied by the system Python. Spack does **not** require Conda and does **not** manage Python environments.
+### Python via Miniconda3
+
+Before installing or using Spack on the Lane Cluster, make sure a suitable Python interpreter is available. Load the shared Miniconda3 module:
+
+```bash
+module load miniconda3
+```
+
+**Using the shared Miniconda3 module is the preferred approach** — it is maintained centrally, avoids duplicating a large installation in every home directory, and guarantees a consistent Python version across login and compute nodes.
+
+If you need a Python installation you control yourself, install Miniconda3 or Anaconda in your home directory instead:
+
+```bash
+cd $HOME
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+source $HOME/miniconda3/bin/activate
+```
+
+Either way, confirm Python is available before continuing:
+
+```bash
+python3 --version
+```
+
+Spack does **not** require Conda to manage packages and does **not** manage Python environments — Conda is used here only to provide the Python interpreter Spack runs on.
+
+### Other requirements
+
+Git is typically satisfied by the system installation. Spack also needs a C/C++ compiler to build packages; the system GCC toolchain is sufficient to get started.
 
 ---
 
-## Loading Spack on the Lane Cluster
+## Installing Spack in Your Home Directory
 
-Spack is available as a module on the Lane Cluster. Load it using:
+Spack is not provided as a module on the Lane Cluster. Instead, each user installs their own copy in their home directory. This gives you full control over the version of Spack, the packages you build, and the configuration you use, without affecting other users.
+
+### Clone the Spack repository
 
 ```bash
-module load spack
+module load miniconda3
+cd $HOME
+git clone --depth=2 https://github.com/spack/spack.git
+```
+
+This creates `$HOME/spack`. The `--depth=2` flag keeps the clone small by skipping most of the Git history.
+
+To install a specific release instead of the development branch:
+
+```bash
+cd $HOME
+git clone --depth=2 --branch=releases/v1.0 https://github.com/spack/spack.git
+```
+
+### Activate Spack in your shell
+
+Spack is activated by sourcing its setup script, which adds the `spack` command to your `PATH`:
+
+```bash
+source $HOME/spack/share/spack/setup-env.sh
+```
+
+For `csh`/`tcsh` use `setup-env.csh`, and for `fish` use `setup-env.fish`.
+
+### Activate Spack automatically on login
+
+To avoid sourcing the script manually in every session, add it to your shell startup file:
+
+```bash
+echo 'module load miniconda3' >> $HOME/.bashrc
+echo 'source $HOME/spack/share/spack/setup-env.sh' >> $HOME/.bashrc
+```
+
+Both lines are also needed inside SLURM batch scripts, since batch jobs do not always source your interactive shell configuration. Add them explicitly to any job script that uses Spack:
+
+```bash
+#!/bin/bash
+#SBATCH --partition=pool1
+#SBATCH --time=01:00:00
+
+module load miniconda3
+source $HOME/spack/share/spack/setup-env.sh
+
+spack install openmpi
 ```
 
 ### Confirm Spack is available
@@ -53,7 +127,36 @@ module load spack
 spack --version
 ```
 
-If the command returns a version number, Spack has been loaded successfully and is ready for use.
+If the command returns a version number, Spack has been installed successfully and is ready for use.
+
+### Where Spack stores its files
+
+By default, everything Spack creates lives under your home directory:
+
+| Path | Contents |
+|------|----------|
+| `$HOME/spack` | The Spack source tree and package recipes |
+| `$HOME/spack/opt/spack` | Installed packages |
+| `$HOME/.spack` | User configuration and cached data |
+
+Builds can consume a significant amount of disk space. If your home directory has a quota, point the install tree and build staging area at a larger filesystem by editing `$HOME/.spack/config.yaml`:
+
+```yaml
+config:
+  install_tree:
+    root: /path/to/large/filesystem/$user/spack
+  build_stage:
+    - /path/to/large/filesystem/$user/spack-stage
+```
+
+### Updating Spack
+
+Because Spack is a Git repository, updating is a pull:
+
+```bash
+cd $HOME/spack
+git pull
+```
 
 ## Basic Usage
 
@@ -123,7 +226,8 @@ Request an interactive compute node salloc -p pool1 --time=01:00:00
 ### Create and activate OpenMPI an environment
 
 ```bash
-module load spack
+module load miniconda3
+source $HOME/spack/share/spack/setup-env.sh
 spack env create openmpi-env
 spack env activate openmpi-env
 ```
