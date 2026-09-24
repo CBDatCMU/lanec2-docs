@@ -3,7 +3,7 @@
 The **Lane Cluster** uses *environment modules* to manage software installations.  
 Modules let you easily load, unload, and switch between different versions of tools without altering your shell configuration.
 
-Environment modules are implemented in **Tcl**, but as a user, you’ll primarily *use* them — not write them.
+The Lane Cluster uses **Lmod** as its module system, and the modulefiles are implemented in **Lua**, not Tcl. As a user, you’ll primarily *use* them — not write them.
 
 ---
 
@@ -107,6 +107,7 @@ This ensures that when your job runs, the environment matches what you expect.
 
 ## 🔗 More Resources
 
-- [Environment Modules Project Documentation](http://modules.sourceforge.net/)
-- [Tcl Environment Modules GitHub](https://github.com/cea-hpc/modules)
+- [Lmod Documentation](https://lmod.readthedocs.io/en/latest/)
+- [Lmod GitHub](https://github.com/TACC/Lmod)
+- [Writing Modulefiles in Lua](https://lmod.readthedocs.io/en/latest/015_writing_modules.html)
 - [Lane Cluster Overview](https://www.cbd.cmu.edu/research/computational-biology-cluster/)
