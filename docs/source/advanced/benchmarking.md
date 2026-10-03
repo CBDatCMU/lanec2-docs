@@ -1,10 +1,11 @@
-# Benchmarking the Lane Cluster
+ # Benchmarking the Lane Cluster
 
-This page documents a systematic benchmark across two core computational biology workloads — matrix multiplication and sequence alignment — run on multiple PSC compute nodes. The goal is to characterize the computational limits and performance characteristics of each node so that researchers can make informed decisions about which node to use for a given workload.
+This page documents a systematic benchmark across core computational biology workloads — matrix multiplication, sequence alignment, and RNA-seq quantification (Salmon) — run on multiple PSC compute nodes. The goal is to characterize the computational limits and performance characteristics of each node so that researchers can make informed decisions about which node to use for a given workload.
 
 Benchmark scripts and raw results are available in the following repositories:
 - [benchmark-matrix-multiplication](https://github.com/CBDatCMU/benchmark-matrix-multiplication)
 - [benchmark-sequence-alignment](https://github.com/CBDatCMU/benchmark-sequence-alignment)
+- [benchmark-salmon](https://github.com/CBDatCMU/benchmark-salmon)
 
 ---
 
@@ -294,6 +295,72 @@ Since sequence alignment is inherently single-core, a natural way to accelerate 
 
 ---
 
+## Part 4: RNA-seq Quantification (Salmon)
+
+[Salmon](https://github.com/COMBINE-lab/salmon) is a standard tool for fast RNA-seq transcript quantification. Unlike Parts 1–2, which measure generic compute kernels, this part benchmarks a real bioinformatics tool end-to-end. The original Salmon papers (Patro et al. 2017) benchmark quantification **accuracy**; here we instead benchmark **performance** — wall time, CPU utilization, and peak memory — to help users pick a node and thread count. Salmon is CPU-only (no GPU), so this ran on **lanec2** and the **Bridges-2 RM (CPU) partition**.
+
+### Environment Setup
+
+```bash
+mamba install -c bioconda salmon dwgsim
+salmon --version
+```
+
+### Method
+
+- **Data:** synthetic paired-end reads generated with **dwgsim** (the papers' flux-simulator is unmaintained and breaks on modern JDKs), simulated directly from the human GENCODE transcriptome. 9 datasets: **1M / 10M / 50M reads × 76 / 100 / 150 bp**.
+- **Index:** Salmon index built once per node from the transcriptome.
+- **Sweep:** `salmon quant --threads` in {1, 2, 4, 8, 16, 32} for every dataset — a 108-run matrix (9 datasets × 6 thread counts × 2 nodes), all returncode 0.
+- **Metrics:** wall time, CPU utilization (%), peak memory (RSS).
+- **Note:** single run per configuration (no repeats) — treat small differences cautiously.
+
+Tables below show the heaviest, most realistic workload — **50M reads, 150 bp** — swept over thread count. The 1M and 10M datasets follow the same shape; full data is in the repo CSVs.
+
+### Results — lanec2 (human, 50M reads, 150 bp)
+
+| Threads | Wall Time (s) | CPU Utilization (%) | Peak Memory (MB) | Status |
+|---|---|---|---|---|
+| 1 | 3,105.2 | 95 | 4,747.6 | ✅ |
+| 2 | 1,554.9 | 188 | 4,711.8 | ✅ |
+| 4 | 830.2 | 352 | 4,744.2 | ✅ |
+| 8 | 492.3 | 615 | 4,984.9 | ✅ |
+| **16** | **384.7** | 967 | 4,859.7 | ✅ |
+| 32 | 385.9 | 1,754 | 5,405.1 | ✅ |
+
+### Results — Bridges-2 RM (human, 50M reads, 150 bp)
+
+| Threads | Wall Time (s) | CPU Utilization (%) | Peak Memory (MB) | Status |
+|---|---|---|---|---|
+| 1 | 3,057.9 | 100 | 4,840.7 | ✅ |
+| 2 | 1,688.8 | 184 | 4,727.4 | ✅ |
+| 4 | 948.6 | 331 | 4,752.0 | ✅ |
+| 8 | 566.9 | 552 | 4,729.0 | ✅ |
+| **16** | **482.9** | 808 | 4,817.8 | ✅ |
+| 32 | 625.3 | 1,796 | 5,069.3 | ✅ |
+
+### Cross-Node Comparison — Salmon (50M reads, 150 bp)
+
+| Threads | lanec2 (s) | Bridges-2 RM (s) | Faster node |
+|---|---|---|---|
+| 1 | 3,105.2 | 3,057.9 | ~tied |
+| 2 | 1,554.9 | 1,688.8 | lanec2 1.09× |
+| 4 | 830.2 | 948.6 | lanec2 1.14× |
+| 8 | 492.3 | 566.9 | lanec2 1.15× |
+| 16 | 384.7 | 482.9 | lanec2 1.25× |
+| 32 | 385.9 | 625.3 | lanec2 1.62× |
+
+Across the full matrix, the median lanec2 advantage is ~tied at 1 thread and ~15% / 29% / 46% at 8 / 16 / 32 threads.
+
+### Interpretation
+
+- **Thread scaling saturates at 8–16 threads, then regresses.** Wall time drops sharply from 1→8 threads (up to ~6× faster) but flattens by 16 and often *increases* at 32. 8 threads is optimal for small inputs (1M), 16 for larger (10M–50M); 32 threads is never meaningfully better and is usually slower.
+- **The ceiling is a serial bottleneck, not hardware.** At 32 threads, CPU utilization reaches only ~950–1,750% (lanec2) / ~1,580–1,800% (Bridges-2 RM) — roughly 10–18 of 32 cores busy. Salmon's index-loading and equivalence-class steps are effectively serial, so extra threads add coordination overhead without parallel work.
+- **Memory is set by the workload, not the thread count.** Peak memory is 2.6–6.6 GB, driven by read count and the large human equivalence-class table; **~8 GB RAM** is a safe request on either node.
+- **lanec2 matches or beats Bridges-2 RM per job.** The two nodes are tied single-threaded; lanec2 scales better with threads (≈15 / 29 / 46% faster at 8 / 16 / 32). For a single Salmon job the older workstation is not a bottleneck — Bridges-2 RM's value is throughput (many concurrent jobs) and freeing the shared lab machine, not single-job speed.
+- **Read length is a minor factor** — 150 bp runs are ~20–30% slower than 76 bp at fixed depth, with comparable memory.
+
+---
+
 ## When to Use Which Node and Algorithm
 
 ### Choosing a node
@@ -307,6 +374,8 @@ Since sequence alignment is inherently single-core, a natural way to accelerate 
 | Single sequence alignment, speed matters | **Bridges-2** | ~1.7× faster single-core CPU than lanec1 |
 | Batch alignment (many pairs) | **lanec2** or **Bridges-2** | More cores → higher parallel throughput |
 | GPU-accelerated workloads (CuPy, PyTorch) | **Bridges-2 GPU node** | Only node with NVIDIA V100 GPUs |
+| RNA-seq quantification (Salmon), single job | **lanec2** | As fast or faster than Bridges-2 RM per job; no queue; use 8–16 threads |
+| RNA-seq quantification (Salmon), many jobs in parallel | **Bridges-2 RM** | Scale out across nodes for throughput; needs an RM allocation |
 
 ### Choosing an alignment algorithm
 
@@ -334,6 +403,8 @@ Since sequence alignment is inherently single-core, a natural way to accelerate 
 | Sequence alignment | lanec2 | All lengths ≤ 10,000 bp ✅ | ~1.2× faster than lanec1 (single-core CPU difference) |
 | Sequence alignment | Bridges-2 | All lengths ≤ 10,000 bp ✅ | ~1.7× faster than lanec1 (single-core CPU difference) |
 | Parallel alignment | lanec1 (8 cores) | Up to 7.38× speedup at 8 workers | Near-linear scaling; longer sequences parallelize more efficiently |
+| RNA-seq quantification (Salmon) | lanec2 | 108-run matrix ✅ | Optimal 8–16 threads; ~15–46% faster than Bridges-2 RM at ≥8 threads |
+| RNA-seq quantification (Salmon) | Bridges-2 RM | 108-run matrix ✅ | Same scaling; 32 threads slower than 16; peak memory 2.6–6.6 GB |
 
 ---
 
@@ -345,3 +416,6 @@ Since sequence alignment is inherently single-core, a natural way to accelerate 
 - benchmark-sequence-alignment repo: <https://github.com/CBDatCMU/benchmark-sequence-alignment>
 - Smith-Waterman algorithm: Smith, T.F. & Waterman, M.S. (1981). *Journal of Molecular Biology*, 147(1), 195–197.
 - Needleman-Wunsch algorithm: Needleman, S.B. & Wunsch, C.D. (1970). *Journal of Molecular Biology*, 48(3), 443–453.
+- Salmon: Patro, R., Duggal, G., Love, M.I., Irizarry, R.A. & Kingsford, C. (2017). *Nature Methods*, 14, 417–419.
+- dwgsim: <https://github.com/nh13/DWGSIM>
+- benchmark-salmon repo: <https://github.com/CBDatCMU/benchmark-salmon>
